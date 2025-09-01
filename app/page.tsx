@@ -140,8 +140,8 @@ export default function Home() {
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
-        title: 'New Fire Radio',
-        text: 'Listen to New Fire Radio live!',
+        title: stationName,
+        text: `Listen to ${stationName} live!`,
         url: window.location.href,
       })
     } else {
@@ -149,6 +149,9 @@ export default function Home() {
       // You could add a toast notification here
     }
   }
+
+  const stationName = process.env.NEXT_PUBLIC_STATION_NAME || 'New Fire Radio'
+  const stationDescription = process.env.NEXT_PUBLIC_STATION_DESCRIPTION || 'Experience the hottest sounds from Ghana and beyond'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-deep-purple via-dark-blue to-accent-blue relative overflow-hidden">
@@ -176,10 +179,10 @@ export default function Home() {
             <Radio className="w-12 h-12 sm:w-16 sm:h-16 text-fire-orange animate-glow" />
           </motion.div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-3 sm:mb-4 text-glow leading-tight">
-            New Fire Radio
+            {stationName}
           </h1>
           <p className="text-base sm:text-lg md:text-xl text-gray-300 px-2 leading-relaxed">
-            Experience the hottest sounds from Ghana and beyond
+            {stationDescription}
           </p>
         </motion.div>
 
@@ -269,7 +272,7 @@ export default function Home() {
               {streamStatus === 'checking' ? 'Verifying connection...' :
                streamStatus === 'offline' ? 'Radio station is currently offline' :
                isLoading ? 'Establishing connection...' : 
-               isPlaying ? 'Live from Ghana' : 
+               isPlaying ? `Live from ${process.env.NEXT_PUBLIC_STATION_LOCATION || 'Ghana'}` : 
                'Tap play to start listening'}
             </p>
             
@@ -351,7 +354,7 @@ export default function Home() {
           className="text-center mt-6 sm:mt-8 text-gray-400 px-4"
         >
           <p className="text-xs sm:text-sm">
-            Powered by New Fire Media
+            Powered by {process.env.NEXT_PUBLIC_COMPANY_NAME || 'New Fire Media'}
           </p>
         </motion.div>
       </div>
