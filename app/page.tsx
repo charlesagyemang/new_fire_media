@@ -18,8 +18,54 @@ export default function Home() {
   const [volume, setVolume] = useState(0.7)
   const [isLoading, setIsLoading] = useState(false)
   const [showVisualizer, setShowVisualizer] = useState(true)
+  const [streamStatus, setStreamStatus] = useState<'online' | 'offline' | 'checking'>('checking')
   const audioRef = useRef<HTMLAudioElement>(null)
   const volumeTimeoutRef = useRef<NodeJS.Timeout>()
+
+  // Check if stream is online
+  const checkStreamStatus = async () => {
+    setStreamStatus('checking')
+    
+    try {
+      // Try to fetch the stream URL
+      const response = await fetch(streamUrl)
+      
+      // Check if response is ok (200-299 range)
+      if (response.ok) {
+        setStreamStatus('online')
+      } else {
+        // 404, 500, etc. means stream is offline
+        console.log('Stream returned status:', response.status)
+        setStreamStatus('offline')
+      }
+    } catch (error) {
+      // If fetch fails completely, try audio method as fallback
+      try {
+        const audio = new Audio()
+        audio.src = streamUrl
+        
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Timeout')), 5000)
+          
+          audio.onloadedmetadata = () => {
+            clearTimeout(timeout)
+            resolve(true)
+          }
+          
+          audio.onerror = () => {
+            clearTimeout(timeout)
+            reject(new Error('Stream error'))
+          }
+        })
+        
+        setStreamStatus('online')
+      } catch (audioError) {
+        // Both methods failed - stream is offline
+        console.log('Stream check failed:', error, audioError)
+        setStreamStatus('offline')
+      }
+    }
+  }
 
   // Set initial volume only once when component mounts
   useEffect(() => {
@@ -35,7 +81,22 @@ export default function Home() {
     }
   }, []) // Empty dependency array means this only runs once
 
-  const streamUrl = 'https://streaming.shoutcast.com/newfireradio'
+  // Check stream status on mount and every 2 minutes
+  useEffect(() => {
+    checkStreamStatus()
+    
+    const interval = setInterval(checkStreamStatus, 2 * 60 * 1000) // Check every 2 minutes
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  const streamUrl = process.env.NEXT_PUBLIC_URL || 'https://streaming.shoutcast.com/newfireradio'
+
+  // Log the stream URL being used (for debugging)
+  useEffect(() => {
+    console.log('Stream URL from env:', process.env.NEXT_PUBLIC_URL)
+    console.log('Using stream URL:', streamUrl)
+  }, [streamUrl])
 
   const togglePlay = async () => {
     if (!audioRef.current) return
@@ -163,32 +224,79 @@ export default function Home() {
           )}
 
           {/* Play Button - Mobile Optimized */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={togglePlay}
-            disabled={isLoading}
-            className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-5 sm:mb-6 rounded-full fire-gradient flex items-center justify-center shadow-2xl button-hover disabled:opacity-50 touch-manipulation"
-          >
-            {isLoading ? (
-              <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-            ) : isPlaying ? (
-              <Pause className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-            ) : (
-              <Play className="w-8 h-8 sm:w-10 sm:h-10 text-white ml-0.5 sm:ml-1" />
-            )}
-          </motion.button>
+          {streamStatus === 'online' ? (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={togglePlay}
+              disabled={isLoading}
+              className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-5 sm:mb-6 rounded-full fire-gradient flex items-center justify-center shadow-2xl button-hover disabled:opacity-50 touch-manipulation"
+            >
+              {isLoading ? (
+                <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : isPlaying ? (
+                <Pause className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+              ) : (
+                <Play className="w-8 h-8 sm:w-10 sm:h-10 text-white ml-0.5 sm:ml-1" />
+              )}
+            </motion.button>
+          ) : streamStatus === 'offline' ? (
+            <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-5 sm:mb-6 rounded-full bg-red-600/20 border-2 border-red-500/30 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-2 text-red-400">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <p className="text-xs text-red-400 font-medium">Offline</p>
+              </div>
+            </div>
+          ) : (
+            <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-5 sm:mb-6 rounded-full bg-yellow-600/20 border-2 border-yellow-500/30 flex items-center justify-center">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin"></div>
+            </div>
+          )}
 
           {/* Status - Mobile Optimized */}
           <div className="text-center mb-5 sm:mb-6 px-2">
             <p className="text-base sm:text-lg font-semibold text-white mb-1">
-              {isLoading ? 'Connecting...' : isPlaying ? 'Now Playing' : 'Ready to Play'}
+              {streamStatus === 'checking' ? 'Checking Stream...' :
+               streamStatus === 'offline' ? 'Stream Offline' :
+               isLoading ? 'Connecting...' : 
+               isPlaying ? 'Now Playing' : 'Ready to Play'}
             </p>
             <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
-              {isLoading ? 'Establishing connection...' : 
+              {streamStatus === 'checking' ? 'Verifying connection...' :
+               streamStatus === 'offline' ? 'Radio station is currently offline' :
+               isLoading ? 'Establishing connection...' : 
                isPlaying ? 'Live from Ghana' : 
                'Tap play to start listening'}
             </p>
+            
+            {/* Stream Status Indicator */}
+            <div className="mt-3 flex items-center justify-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${
+                streamStatus === 'online' ? 'bg-green-400' : 
+                streamStatus === 'offline' ? 'bg-red-400' : 'bg-yellow-400'
+              }`}></div>
+              <span className={`text-xs font-medium ${
+                streamStatus === 'online' ? 'text-green-400' : 
+                streamStatus === 'offline' ? 'text-red-400' : 'text-yellow-400'
+              }`}>
+                {streamStatus === 'online' ? 'Stream Online' : 
+                 streamStatus === 'offline' ? 'Stream Offline' : 'Checking...'}
+              </span>
+            </div>
+            
+            {/* Refresh Button for Offline State */}
+            {streamStatus === 'offline' && (
+              <button
+                onClick={checkStreamStatus}
+                className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors touch-manipulation"
+              >
+                Check Again
+              </button>
+            )}
           </div>
 
           {/* Volume Control - Mobile Optimized */}
