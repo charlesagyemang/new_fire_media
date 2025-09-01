@@ -9,10 +9,8 @@ export default function TestAudio() {
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const testUrls = [
-    'http://streaming.shoutcast.com/newfireradio',
     'https://streaming.shoutcast.com/newfireradio',
-    'http://ice1.somafm.com/groovesalad-128-mp3',
-    'http://ice1.somafm.com/defcon-128-mp3'
+    'https://streaming.shoutcast.com/newfireradio',
   ]
 
   const testStream = async (url: string) => {

@@ -19,14 +19,23 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [showVisualizer, setShowVisualizer] = useState(true)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const volumeTimeoutRef = useRef<NodeJS.Timeout>()
 
-  const streamUrl = 'http://streaming.shoutcast.com/newfireradio'
-
+  // Set initial volume only once when component mounts
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume
     }
-  }, [volume])
+    
+    // Cleanup function to clear timeout
+    return () => {
+      if (volumeTimeoutRef.current) {
+        clearTimeout(volumeTimeoutRef.current)
+      }
+    }
+  }, []) // Empty dependency array means this only runs once
+
+  const streamUrl = 'https://streaming.shoutcast.com/newfireradio'
 
   const togglePlay = async () => {
     if (!audioRef.current) return
@@ -57,10 +66,14 @@ export default function Home() {
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value)
-    setVolume(newVolume)
+    
+    // Set audio volume immediately for responsive feel
     if (audioRef.current) {
       audioRef.current.volume = newVolume
     }
+    
+    // Update state immediately for smooth slider movement
+    setVolume(newVolume)
   }
 
   const handleShare = () => {
@@ -193,7 +206,15 @@ export default function Home() {
               step="0.01"
               value={volume}
               onChange={handleVolumeChange}
-              className="flex-1 h-2 sm:h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider touch-manipulation"
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+              className="flex-1 h-3 sm:h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider touch-manipulation"
+              style={{ 
+                touchAction: 'pan-x',
+                WebkitAppearance: 'none',
+                cursor: 'grab',
+                WebkitTapHighlightColor: 'transparent'
+              }}
             />
             <span className="text-xs sm:text-sm text-gray-400 w-8 sm:w-12 text-right">
               {Math.round(volume * 100)}%
