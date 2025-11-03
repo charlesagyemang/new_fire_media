@@ -153,6 +153,76 @@ export default function Home() {
   const stationName = process.env.NEXT_PUBLIC_STATION_NAME || 'New Fire Radio'
   const stationDescription = process.env.NEXT_PUBLIC_STATION_DESCRIPTION || 'Experience the hottest sounds from Ghana and beyond'
 
+  const [nowPlayingTitle, setNowPlayingTitle] = useState<string>(process.env.NEXT_PUBLIC_TITLE || stationName)
+
+  const parseMetadata = (body: any): string | null => {
+    if (!body) return null
+    if (typeof body === 'string') {
+      const txt = body.trim()
+      if (!txt) return null
+      return txt
+    }
+    const keys = ['title', 'now_playing', 'song', 'current', 'track', 'nowplaying', 'nowPlaying']
+    for (const k of keys) {
+      if (k in body && body[k]) return String(body[k])
+    }
+    if (body.data) {
+      return parseMetadata(body.data) as string | null
+    }
+    return null
+  }
+
+  useEffect(() => {
+    const metadataUrl = process.env.NEXT_PUBLIC_METADATA_URL
+    if (!metadataUrl) return
+
+    let mounted = true
+
+    const fetchMeta = async () => {
+      try {
+        const res = await fetch(metadataUrl, { cache: 'no-cache' })
+        let body: any
+        const ct = res.headers.get('content-type') || ''
+        if (ct.includes('application/json')) {
+          body = await res.json()
+        } else {
+          body = await res.text()
+        }
+
+        const title = parseMetadata(body)
+        if (mounted && title) setNowPlayingTitle(title)
+      } catch (err) {
+      }
+    }
+
+    fetchMeta()
+    const id = setInterval(fetchMeta, 15 * 1000)
+    return () => {
+      mounted = false
+      clearInterval(id)
+    }
+  }, [])
+
+  useEffect(() => {
+    const base = stationName || 'Radio'
+    try {
+      document.title = isPlaying ? `${nowPlayingTitle} — ${base}` : base
+    } catch (e) {
+    }
+
+    if ('mediaSession' in navigator) {
+      try {
+        // @ts-ignore
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: nowPlayingTitle,
+          artist: stationName,
+        })
+      } catch (err) {
+        // ignore unsupported MediaMetadata
+      }
+    }
+  }, [nowPlayingTitle, isPlaying, stationName])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-deep-purple via-dark-blue to-accent-blue relative overflow-hidden">
       {/* Background Elements - Mobile Optimized */}
@@ -266,7 +336,7 @@ export default function Home() {
               {streamStatus === 'checking' ? 'Checking Stream...' :
                streamStatus === 'offline' ? 'Stream Offline' :
                isLoading ? 'Connecting...' : 
-               isPlaying ? 'Now Playing' : 'Ready to Play'}
+               isPlaying ? `Now Playing - ${nowPlayingTitle}` : 'Ready to Play'}
             </p>
             <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
               {streamStatus === 'checking' ? 'Verifying connection...' :
