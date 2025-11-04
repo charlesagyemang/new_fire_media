@@ -1,0 +1,13 @@
+{
+  "config": {
+    "speed": 70,
+    "separator": "  ★  "
+  },
+  "announcements": [
+    { "type": "now_playing", "template": "Now playing: {{nowPlaying}}" },
+    { "type": "info", "text": "Join our Sunday Service every week at 7:00 AM" },
+    { "type": "info", "text": "Join our Online Service every Wednesday Service at 6:00 PM" },
+    { "type": "info", "text": "Join our Prosperity Service every Thursday Service at 6:00 PM" },
+    { "type": "info", "text": "Support or advertise on this station by sending a message to 233266593915" }
+  ]
+}
