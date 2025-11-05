@@ -11,6 +11,7 @@ import {
   Music, 
   Share2
 } from 'lucide-react'
+import Marquee from './components/Marquee'
 
 export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false)
@@ -346,6 +347,9 @@ export default function Home() {
                'Tap play to start listening'}
             </p>
             
+            {/* Marquee announcements (simple, configurable via public/announcements.json) */}
+            <Marquee nowPlaying={nowPlayingTitle} />
+          
             {/* Stream Status Indicator */}
             <div className="mt-3 flex items-center justify-center space-x-2">
               <div className={`w-2 h-2 rounded-full ${
